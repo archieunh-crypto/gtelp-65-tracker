@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>지텔프 65점 챌린지 — 한 달 루틴 트래커</title>
+<style>
+  :root {
+    --brand:#2563eb;
+    --muted:#6b7280;
+    --bg:#0b1020;
+    --card:#0f172a;
+    --border:#1f2937;
+    --ok:#10b981;
+    --warn:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans CJK KR', 'Apple SD Gothic Neo', 'Malgun Gothic', Arial, sans-serif;
+         background: linear-gradient(180deg,#0a0f1e 0%, #0d1326 100%); color:#e5e7eb; }
+  .wrap { max-width: 980px; margin: 32px auto; padding: 0 16px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px;}
+  .title { font-size: 22px; font-weight: 700; letter-spacing: .2px; }
+  .subtitle { color:#9ca3af; font-size: 13px;}
+  .card { background: var(--card); border:1px solid var(--border); border-radius: 14px; padding:16px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .grid { display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; }
+  @media (max-width:860px){ .grid{ grid-template-columns: 1fr; } }
+  .progress { padding: 16px; }
+  .bar { height: 18px; background:#0b1224; border:1px solid #1e293b; border-radius: 10px; overflow:hidden; }
+  .bar > div { height:100%; width:0%; background: linear-gradient(90deg, #1d4ed8, #60a5fa); transition: width .25s ease; }
+  .stats { display:flex; align-items:center; justify-content:space-between; margin-top:10px; font-size:13px; color:#cbd5e1; }
+  .pill { display:inline-flex; gap:6px; align-items:center; padding:6px 10px; background:#0b1224; border:1px solid #1f2a40; border-radius:999px; }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; }
+  button { padding:8px 10px; border-radius:10px; border:1px solid #1f2a40; background:#0b1224; color:#e5e7eb; cursor:pointer; }
+  button:hover { background:#0f1b34; }
+  .days { max-height: 70vh; overflow:auto; padding-right:6px; }
+  .day { display:grid; grid-template-columns: 32px 1fr 90px 80px; gap:10px; align-items:center; padding:10px 12px; border-bottom:1px dashed #1f2937; }
+  .day:last-child{ border-bottom:none; }
+  .day label { display:flex; align-items:center; gap:10px; font-weight:600; color:#c7d2fe; }
+  input[type="checkbox"]{ width:18px; height:18px; cursor:pointer; }
+  input[type="text"], input[type="number"]{ width:100%; padding:8px 10px; border-radius:8px; background:#0b1224; border:1px solid #1f2a40; color:#e5e7eb; }
+  input[type="text"]::placeholder, input[type="number"]::placeholder{ color:#64748b; }
+  .muted { color:#94a3b8; font-size:12px; }
+  footer { margin-top:16px; text-align:center; color:#94a3b8; font-size:12px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="title">지텔프 65점 챌린지 — 한 달 루틴 트래커</div>
+        <div class="subtitle">매일 체크하고, 진도율은 자동으로 계산됩니다. (브라우저 <b>localStorage</b> 저장)</div>
+      </div>
+      <div class="btns">
+        <button onclick="toggleAll(true)">모두 완료</button>
+        <button onclick="toggleAll(false)">모두 해제</button>
+        <button onclick="resetAll()">전체 초기화</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card progress">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="pill"><span>🎯</span><span>목표: 한 달 안에 65점</span></div>
+          <div class="pill"><span>📅</span><span id="today"></span></div>
+        </div>
+        <div class="bar"><div id="barFill"></div></div>
+        <div class="stats">
+          <div><b id="pct">0%</b> 진행</div>
+          <div>완료: <b id="done">0</b> / <b id="total">28</b>일</div>
+        </div>
+      </div>
+
+      <div class="card days" id="days"></div>
+    </div>
+
+    <footer>Tip: 이 페이지를 링크로 배포하면 Notion에서 <b>/Embed</b>로 삽입할 수 있어요.</footer>
+  </div>
+
+<script>
+const TOTAL = 28;
+const KEY_PREFIX = "gtelp65_embed_";
+
+function dayKey(n, field){ return KEY_PREFIX + "day" + n + "_" + field; }
+
+function save(n){
+  const done = document.getElementById("c"+n).checked ? "1" : "0";
+  const note = document.getElementById("t"+n).value;
+  const hr = document.getElementById("h"+n).value;
+  const sc = document.getElementById("s"+n).value;
+  localStorage.setItem(dayKey(n,"done"), done);
+  localStorage.setItem(dayKey(n,"note"), note);
+  localStorage.setItem(dayKey(n,"hr"), hr);
+  localStorage.setItem(dayKey(n,"sc"), sc);
+  refreshProgress();
+}
+
+function toggleAll(state){
+  for(let n=1; n<=TOTAL; n++){
+    const cb = document.getElementById("c"+n);
+    cb.checked = state;
+    save(n);
+  }
+}
+
+function resetAll(){
+  for(let n=1; n<=TOTAL; n++){
+    ["done","note","hr","sc"].forEach(f => localStorage.removeItem(dayKey(n,f)));
+  }
+  render(); // re-render to clear inputs
+  refreshProgress();
+}
+
+function refreshProgress(){
+  let done = 0;
+  for(let n=1; n<=TOTAL; n++){
+    if(localStorage.getItem(dayKey(n,"done")) === "1") done++;
+  }
+  const pct = Math.round(100*done/TOTAL);
+  document.getElementById("done").textContent = done;
+  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("barFill").style.width = pct + "%";
+}
+
+function render(){
+  const days = document.getElementById("days");
+  days.innerHTML = "";
+  for(let n=1; n<=TOTAL; n++){
+    const done = localStorage.getItem(dayKey(n,"done")) === "1";
+    const note = localStorage.getItem(dayKey(n,"note")) || "";
+    const hr = localStorage.getItem(dayKey(n,"hr")) || "";
+    const sc = localStorage.getItem(dayKey(n,"sc")) || "";
+    const row = document.createElement("div");
+    row.className = "day";
+    row.innerHTML = `
+      <label><input id="c${n}" type="checkbox" ${done?"checked":""} onchange="save(${n})">Day ${n}</label>
+      <input id="t${n}" type="text" placeholder="학습 내용 (예: 시제 + 조동사)" value="${note}" oninput="save(${n})">
+      <input id="h${n}" type="text" placeholder="학습 시간 (예: 1h)" value="${hr}" oninput="save(${n})">
+      <input id="s${n}" type="number" min="0" max="100" placeholder="점수" value="${sc}" oninput="save(${n})">
+    `;
+    days.appendChild(row);
+  }
+}
+
+function initToday(){
+  const d = new Date();
+  const z = (n) => n.toString().padStart(2,'0');
+  document.getElementById("today").textContent = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initToday();
+  render();
+  refreshProgress();
+});
+</script>
+</body>
+</html>
